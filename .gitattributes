@@ -1,0 +1,13 @@
+# 원본 바이트 보존
+* -text
+
+*.md            text eol=lf
+.gitignore      text eol=lf
+.gitattributes  text eol=lf
+LICENSE         text eol=lf
+
+*.fla     binary
+*.swf     binary
+*.mp3     binary
+*.png     binary
+*.jpg     binary

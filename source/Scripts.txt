@@ -1,0 +1,1384 @@
+﻿stage.align = StageAlign.TOP_LEFT;
+stage.scaleMode = StageScaleMode.EXACT_FIT;
+
+stage.addEventListener(Event.ENTER_FRAME, SystemEventStep);
+stage.addEventListener(KeyboardEvent.KEY_DOWN, SystemEventKeyDown);
+stage.addEventListener(KeyboardEvent.KEY_UP, SystemEventKeyUp);
+
+var SystemInstanceList:Array = new Array();
+var SystemInstanceDestroyList:Array = new Array();
+
+var SystemKeyStateList:Array = new Array();
+const ConstSystemKeyNoone = 0;
+const ConstSystemKeyPress = 1;
+const ConstSystemKeyDown = 2;
+const ConstSystemKeyRelease = 3;
+
+var SystemRoomWidth:int = 0;
+var SystemRoomHeight:int = 0;
+var SystemViewX:int = 0;
+var SystemViewY:int = 0;
+
+var EventStepList:Array = new Array();
+var EventKeyPressList:Array = new Array();
+var EventKeyDownList:Array = new Array();
+var EventKeyReleaseList:Array = new Array();
+
+var FontArial20:TextFormat = new TextFormat();
+FontArial20.size = 20;
+FontArial20.font = "Arial";
+
+var BgmMenu:Sound = new Sound(new URLRequest(".\\Sounds\\BgmMenu.mp3"));
+var BgmGame:Sound = new Sound(new URLRequest(".\\Sounds\\BgmGame.mp3"));
+var BgmChannel:SoundChannel = null;
+
+var SndOpenPage:Sound = new Sound(new URLRequest(".\\Sounds\\SndOpenPage.mp3"));
+var SndShot:Sound = new Sound(new URLRequest(".\\Sounds\\SndShot.mp3"));
+var SndMultiShot:Sound = new Sound(new URLRequest(".\\Sounds\\SndMultiShot.mp3"));
+var SndBomb:Sound = new Sound(new URLRequest(".\\Sounds\\SndBomb.mp3"));
+var SndGetItem:Sound = new Sound(new URLRequest(".\\Sounds\\SndGetItem.mp3"));
+
+InstanceCreate(ObjMenu, 0, 0);
+
+function EventCreate(id:Object): void
+{
+	switch(id.baseClass)
+	{
+		case ObjMenu:
+			With(id, "other", function (id, other){
+				 InstanceDestroy(id);
+			});
+			SystemRoomWidth = stage.stageWidth;
+			SystemRoomHeight = stage.stageHeight;
+			SetView(0, 0);
+			InstanceCreate(ObjBackground, 0, 0).gotoAndStop(1);
+			InstanceCreate(ObjGameStart, 420, 200);
+			InstanceCreate(ObjHowToStart, 420, 300);
+			InstanceCreate(ObjCreditStart, 420, 400);
+			if(BgmChannel!=null){
+				BgmChannel.stop();
+			}
+			BgmChannel = BgmMenu.play(0, 1000);
+			break;
+		case ObjGameStart:
+			id.gotoAndStop(1);
+			id.addEventListener(MouseEvent.MOUSE_UP, EventMouseUp);
+			id.addEventListener(MouseEvent.MOUSE_OVER, EventMouseOver);
+			id.addEventListener(MouseEvent.MOUSE_OUT, EventMouseOut);
+			break;
+		case ObjHowToStart:
+			id.gotoAndStop(1);
+			id.addEventListener(MouseEvent.MOUSE_UP, EventMouseUp);
+			id.addEventListener(MouseEvent.MOUSE_OVER, EventMouseOver);
+			id.addEventListener(MouseEvent.MOUSE_OUT, EventMouseOut);
+			break;
+		case ObjCreditStart:
+			id.gotoAndStop(1);
+			id.addEventListener(MouseEvent.MOUSE_UP, EventMouseUp);
+			id.addEventListener(MouseEvent.MOUSE_OVER, EventMouseOver);
+			id.addEventListener(MouseEvent.MOUSE_OUT, EventMouseOut);
+			break;
+		case ObjGame:
+			With(id, "other", function (id, other){
+				 InstanceDestroy(id);
+			});
+			SystemRoomWidth = 3000;
+			SystemRoomHeight = stage.stageHeight+100;
+			SetView(0, 0);
+			id.currentControl = 0;
+			InstanceCreate(ObjBackground, 0, 0).gotoAndStop(2);
+			InstanceCreateBitmap(ObjTerrain, -60, 240);
+			With(id, InstanceCreate(ObjCannon, 700, 100), function (id, other){
+				 MoveContact(id, ObjTerrain, 270, 1000);
+				 id.xPrevious = id.x;
+				 id.yPrevious = id.y;
+				 id.moveMax = 200;
+			}); //player 1
+			With(id, InstanceCreate(ObjCannon, SystemRoomWidth-1300, 400), function (id, other){
+				 MoveContact(id, ObjTerrain, 270, 1000);
+				 id.xPrevious = id.x;
+				 id.yPrevious = id.y;
+				 id.moveMax = 200;
+				 id.gotoAndStop(2);
+				 id.control = 1;
+				 id.scaleX = -1;
+			}); //player 2
+			InstanceCreate(ObjAngleArrow, -1000, -1000);
+			id.powerBar = InstanceCreate(ObjHealthbar, -1000, -1000);
+			id.powerBar.SetInit(-30, -10, 80, 10, 0, 1, 0xFF0000, 0.5);
+			id.hpBar = InstanceCreate(ObjHealthbar, -1000, -1000);
+			id.hpBar.SetInit(-30, -10, 80, 10, 0, 100, 0xFF0000, 0.7);
+			id.moveBar = InstanceCreate(ObjHealthbar, -1000, -1000);
+			id.moveBar.SetInit(-30, -10, 80, 10, 0, 200, 0x0080FF, 0.5);
+			InstanceCreate(ObjItemBox, -1000, -1000);
+			InstanceCreate(ObjTextBox, -1000, -1000);
+			if(BgmChannel!=null){
+				BgmChannel.stop();
+			}
+			BgmChannel = BgmGame.play(0, 1000);
+			EventStepList.push(id);
+			break;
+		case ObjCannon:
+			id.gForce = 0.5;
+			id.gApply = 0;
+			id.gradeAbility = 60;
+			id.friction = 0.15;
+			id.hSpeed = 0;
+			id.hSpeedMax = 6;
+			id.hSpeedAccel = 0.25;
+			id.vSpeed = 0;
+			id.vSpeedMax = 12;
+			id.shotPower = 0;
+			id.shotAngleMax = -15;
+			id.shotAngleMin = -45;
+			id.shotAngle = id.shotAngleMax;
+			id.shotItem = 0;
+			id.control = 0;
+			id.hp = 100;
+			id.xPrevious = x;
+			id.yPrevious = y;
+			id.moveMax = 200;
+			id.stop();
+			EventStepList.push(id);
+			EventKeyDownList.push(id);
+			EventKeyPressList.push(id);
+			EventKeyReleaseList.push(id);
+			break;
+		case ObjCannonShot:
+			id.hSpeed = 0;
+			id.vSpeed = 0;
+			id.gravity = 0;
+			id.gravityDirection = 270;
+			id.control = 0;
+			EventStepList.push(id);
+			break;
+		case ObjFlame:
+			EventStepList.push(id);
+			break;
+		case ObjItem:
+			id.vSpeed = 0;
+			id.gravity = 0.15;
+			With(id, ObjBackground, function (id, other){
+				 stage.setChildIndex(MovieClip(other), stage.getChildIndex(MovieClip(id))+1);
+			});
+			EventStepList.push(id);
+			break;
+		case ObjClearBox:
+			id.scaleX = 0;
+			id.scaleY = 0;
+			id.isOpen = true;
+			SndOpenPage.play();
+			id.addEventListener(MouseEvent.MOUSE_UP, EventMouseUp);
+			EventStepList.push(id);
+			break;
+		case ObjHowTo:
+			SystemRoomWidth = stage.stageWidth;
+			SystemRoomHeight = stage.stageHeight;
+			SetView(0, 0);
+			InstanceCreate(ObjHowToBox, SystemRoomWidth/2, SystemRoomHeight/2);
+			break;
+		case ObjHowToBox:
+			id.scaleX = 0;
+			id.scaleY = 0;
+			id.isOpen = true;
+			SndOpenPage.play();
+			id.addEventListener(MouseEvent.MOUSE_UP, EventMouseUp);
+			EventStepList.push(id);
+			break;
+		case ObjCredit:
+			SystemRoomWidth = stage.stageWidth;
+			SystemRoomHeight = stage.stageHeight;
+			SetView(0, 0);
+			InstanceCreate(ObjCreditBox, SystemRoomWidth/2, SystemRoomHeight/2);
+			break;
+		case ObjCreditBox:
+			id.scaleX = 0;
+			id.scaleY = 0;
+			id.isOpen = true;
+			SndOpenPage.play();
+			id.addEventListener(MouseEvent.MOUSE_UP, EventMouseUp);
+			EventStepList.push(id);
+			break;
+		case ObjHealthbar:
+			id.SetInit = function (varX, varY, varWidth, varHeight, currValue, maxValue, barColor, barAlpha)
+			{
+				this.varX = varX;
+				this.varY = varY;
+				this.varWidth = varWidth;
+				this.varHeight = varHeight;
+				this.currValue = currValue;
+				this.maxValue = maxValue;
+				this.barColor = barColor;
+				this.barAlpha = barAlpha;
+				this.DrawHealthbar();
+			};
+			id.SetCurrentValue = function (currValue)
+			{
+				this.currValue = currValue;
+				this.DrawHealthbar();
+			};
+			id.SetMaxValue = function (maxValue)
+			{
+				this.maxValue = maxValue;
+				this.DrawHealthbar();
+			};
+			id.SetColor = function (barColor)
+			{
+				this.barColor = barColor;
+				this.DrawHealthbar();
+			};
+			id.DrawHealthbar = function ()
+			{
+				this.square.graphics.clear();
+				this.square.graphics.lineStyle(0, 0x000000, 0);
+				this.square.graphics.beginFill(this.barColor, this.barAlpha);
+				this.square.graphics.drawRect(this.varX, this.varY, (this.currValue/this.maxValue*this.varWidth), this.varHeight);
+				this.square.graphics.endFill();
+				this.square.graphics.lineStyle(1, 0x000000, 1);
+				this.square.graphics.drawRect(this.varX, this.varY, this.varWidth, this.varHeight);
+			};
+			id.square = new Shape();
+			id.addChild(id.square);
+			break;
+		case ObjTextBox:
+			id.textBox = new TextField();
+			id.textBox.text = "";
+			id.textBox.autoSize = "left";
+			id.textBox.selectable = false;
+			//id.textBox.setTextFormat(font);
+			id.addChild(id.textBox);
+			break;
+	}
+}
+
+function EventDestroy(id:Object): void
+{
+	switch(id.baseClass)
+	{
+		case ObjGameStart:
+			id.removeEventListener(MouseEvent.MOUSE_UP, EventMouseUp);
+			id.removeEventListener(MouseEvent.MOUSE_OVER, EventMouseOver);
+			id.removeEventListener(MouseEvent.MOUSE_OUT, EventMouseOut);
+			break;
+		case ObjHowToStart:
+			id.removeEventListener(MouseEvent.MOUSE_UP, EventMouseUp);
+			id.removeEventListener(MouseEvent.MOUSE_OVER, EventMouseOver);
+			id.removeEventListener(MouseEvent.MOUSE_OUT, EventMouseOut);
+			break;
+		case ObjCreditStart:
+			id.removeEventListener(MouseEvent.MOUSE_UP, EventMouseUp);
+			id.removeEventListener(MouseEvent.MOUSE_OVER, EventMouseOver);
+			id.removeEventListener(MouseEvent.MOUSE_OUT, EventMouseOut);
+			break;
+		case ObjGame:
+			EventStepList.splice(EventStepList.indexOf(id), 1);
+			break;
+		case ObjCannon:
+			EventStepList.splice(EventStepList.indexOf(id), 1);
+			EventKeyDownList.splice(EventKeyDownList.indexOf(id), 1);
+			EventKeyPressList.splice(EventKeyPressList.indexOf(id), 1);
+			EventKeyReleaseList.splice(EventKeyReleaseList.indexOf(id), 1);
+			break;
+		case ObjCannonShot:
+			EventStepList.splice(EventStepList.indexOf(id), 1);
+			break;
+		case ObjFlame:
+			With(id, ObjGame, function (id, other){
+				 id.hpBar.x = -1000;
+				 id.hpBar.y = -1000;
+			});
+			EventStepList.splice(EventStepList.indexOf(id), 1);
+			break;
+		case ObjItem:
+			EventStepList.splice(EventStepList.indexOf(id), 1);
+			break;
+		case ObjClearBox:
+			id.removeEventListener(MouseEvent.MOUSE_UP, EventMouseUp);
+			EventStepList.splice(EventStepList.indexOf(id), 1);
+			break;
+		case ObjHowToBox:
+			id.removeEventListener(MouseEvent.MOUSE_UP, EventMouseUp);
+			EventStepList.splice(EventStepList.indexOf(id), 1);
+			break;
+		case ObjCreditBox:
+			id.removeEventListener(MouseEvent.MOUSE_UP, EventMouseUp);
+			EventStepList.splice(EventStepList.indexOf(id), 1);
+			break;
+	}
+}
+
+function EventStep(id:Object): void
+{
+	switch(id.baseClass)
+	{
+		case ObjGame:
+			if(id.powerBar.x!=-1000 && id.powerBar.y!=-1000)
+			{
+				id.moveBar.x = -1000;
+				id.moveBar.y = -1000;
+			}
+			break;
+		case ObjCannon:
+			if(PlaceFree(id, ObjTerrain, id.x, id.y + id.vSpeed + BoolToInt(id.vSpeed>=0)))
+			{
+				id.gApply = id.gForce;
+				id.vSpeed += id.gApply;
+				id.vSpeed = Math.min(id.vSpeed, id.vSpeedMax);
+				id.y += id.vSpeed;
+			}
+			else
+			{
+				if(id.vSpeed!=0){
+					MoveContact(id, ObjTerrain, 90 + 180 * BoolToInt(id.vSpeed >= 0), Math.abs(id.vSpeed));
+				}
+				if(id.vSpeed>0)
+				{
+					id.gApply = 0;
+					id.vSpeed = 0;
+				}
+				else{
+					id.vSpeed = -id.vSpeed;
+				}
+			}
+			//Set gravity
+			var vLimit:Number, tempY:Number;
+			vLimit = Math.tan(DegToRad(id.gradeAbility)) * Math.max(1, Math.abs(id.hSpeed));
+			if(id.hSpeed!=0)
+			{
+				if(PlaceFree(id, ObjTerrain, id.x + id.hSpeed, id.y))
+				{
+					id.x += id.hSpeed;
+					if(id.vSpeed==0 && id.gApply==0)
+					{
+						tempY = id.y;
+						MoveContact(id, ObjTerrain, 270, Math.ceil(vLimit));
+						if(id.y > (tempY + vLimit)){
+							id.y = tempY;
+						}
+					}
+				}
+				else
+				{
+					if(PlaceFree(id, ObjTerrain, id.x + id.hSpeed, id.y - vLimit))
+					{
+						id.x += id.hSpeed;
+						id.y -= vLimit;
+						MoveContact(id, ObjTerrain, 270, vLimit);
+					}
+					else{
+						id.hSpeed = 0;
+					}
+				}
+			}
+			id.hSpeed = (id.hSpeed - (Sign(id.hSpeed) * id.friction)) * BoolToInt(Math.abs(id.hSpeed) > id.friction);
+			//Movement
+			id.x = Math.max(Math.min(id.x, SystemRoomWidth-(id.width/2)), id.width/2);
+			//id.y = Math.max(Math.min(id.y, SystemRoomHeight-(id.height/2)), id.height/2);
+			if(id.y>SystemRoomHeight+(id.height/2) || id.hp<=0)
+			{
+				InstanceDestroy(id);
+				if(InstanceNumber(id, ObjClearBox)==0)
+				{
+					InstanceCreate(ObjClearBox, stage.stageWidth/2, stage.stageHeight/2);
+					With(id, ObjGame, function (id, other){
+						 id.currentControl = null;
+					});
+				}
+			}
+			//Position restriction
+			HitTestCollision(id, ObjItem, true);
+			//Get the item
+			var controlTurn;
+			With(id, ObjGame, function (id, other){
+				 controlTurn = id.currentControl;
+			});
+			if(id.control==controlTurn)
+			{
+				if(InstanceNumber(id, ObjCannonShot)==0 && InstanceNumber(id, ObjFlame)==0)
+				{
+					SetView(id.x-(stage.stageWidth/2), id.y-(stage.stageHeight/2));
+					With(id, ObjBackground, function (id, other){
+						 id.x = SystemViewX;
+						 id.y = SystemViewY;
+					});
+					With(id, ObjItemBox, function (id, other){
+						 id.x = SystemViewX+100;
+						 id.y = SystemViewY+150;
+						 id.gotoAndStop(other.shotItem+1);
+					});
+					With(id, ObjTextBox, function (id, other){
+						 id.x = SystemViewX+100;
+						 id.y = SystemViewY+190;
+						 switch(other.shotItem)
+						 {
+							 case 0: id.textBox.text = "Normal"; break;
+							 case 1: id.textBox.text = "Big Bombing"; break;
+							 case 2: id.textBox.text = "Carpet Bombing"; break;
+						 }
+						 id.textBox.autoSize = "center";
+						 id.textBox.setTextFormat(FontArial20);
+					});
+				}
+				if(id.hSpeed!=0 || id.vSpeed!=0)
+				{
+					With(id, ObjGame, function (id, other){
+						 id.moveBar.x = other.x;
+						 id.moveBar.y = other.y-40;
+						 id.moveBar.SetCurrentValue(Math.min(id.moveBar.maxValue, PointDistance(other.xPrevious, other.yPrevious, other.x, other.yPrevious)));
+					});
+				}
+				else
+				{
+					With(id, ObjGame, function (id, other){
+						 id.moveBar.x = -1000;
+						 id.moveBar.y = -1000;
+					});
+				}
+			}
+			break;
+		case ObjCannonShot:
+			id.x += id.hSpeed;
+			id.y += id.vSpeed;
+			id.hSpeed += LengthdirX(id.gravity, id.gravityDirection);
+			id.vSpeed += LengthdirY(id.gravity, id.gravityDirection);
+			HitTestCollision(id, ObjTerrain, true);
+			if((id.x>SystemRoomWidth+(id.width/2) || id.x<-(id.width/2)) || (id.y>SystemRoomHeight+(id.height/2) || id.y<-(id.height/2)))
+			{
+				InstanceCreate(ObjFlame, id.x, id.y+10);
+				InstanceDestroy(id);
+				SndBomb.play();
+			}
+			SetView(id.x-(stage.stageWidth/2), id.y-(stage.stageHeight/2));
+			With(id, ObjBackground, function (id, other){
+				 id.x = SystemViewX;
+				 id.y = SystemViewY;
+			});
+			break;
+		case ObjFlame:
+			HitTestCollision(id, ObjCannon, false);
+			if(id.currentFrame==id.totalFrames){
+				InstanceDestroy(id);
+			}
+			SetView(id.x-(stage.stageWidth/2), id.y-(stage.stageHeight/2));
+			With(id, ObjBackground, function (id, other){
+				 id.x = SystemViewX;
+				 id.y = SystemViewY;
+			});
+			break;
+		case ObjItem:
+			id.vSpeed += id.gravity;
+			if(PlaceFree(id, ObjTerrain, id.x, id.y+id.vSpeed))
+			{
+				id.y += id.vSpeed;
+				if(id.y>SystemRoomHeight+(id.height/2)){
+					InstanceDestroy(id);
+				}
+			}
+			else{
+				id.vSpeed = 0;
+			}
+			break;
+		case ObjClearBox:
+			if(id.isOpen)
+			{
+				if(id.scaleX<1 && id.scaleY<1)
+				{
+					id.scaleX = Math.min(1, id.scaleX+0.05);
+					id.scaleY = Math.min(1, id.scaleY+0.05);
+				}
+			}
+			else
+			{
+				if(id.scaleX>0 && id.scaleY>0)
+				{
+					id.scaleX = Math.max(0, id.scaleX-0.05);
+					id.scaleY = Math.max(0, id.scaleY-0.05);
+				}
+				else
+				{
+					InstanceCreate(ObjMenu, 0, 0);
+					InstanceDestroy(id);
+				}
+			}
+			id.x = SystemViewX+stage.stageWidth/2;
+			id.y = SystemViewY+stage.stageHeight/2;
+			break;
+		case ObjHowToBox:
+			if(id.isOpen)
+			{
+				if(id.scaleX<1 && id.scaleY<1)
+				{
+					id.scaleX = Math.min(1, id.scaleX+0.05);
+					id.scaleY = Math.min(1, id.scaleY+0.05);
+				}
+			}
+			else
+			{
+				if(id.scaleX>0 && id.scaleY>0)
+				{
+					id.scaleX = Math.max(0, id.scaleX-0.05);
+					id.scaleY = Math.max(0, id.scaleY-0.05);
+				}
+				else{
+					InstanceDestroy(id);
+					With(id, ObjHowTo, function (id, other){
+						 InstanceDestroy(id);
+					});
+				}
+			}
+			break;
+		case ObjCreditBox:
+			if(id.isOpen)
+			{
+				if(id.scaleX<1 && id.scaleY<1)
+				{
+					id.scaleX = Math.min(1, id.scaleX+0.05);
+					id.scaleY = Math.min(1, id.scaleY+0.05);
+				}
+			}
+			else
+			{
+				if(id.scaleX>0 && id.scaleY>0)
+				{
+					id.scaleX = Math.max(0, id.scaleX-0.05);
+					id.scaleY = Math.max(0, id.scaleY-0.05);
+				}
+				else{
+					InstanceDestroy(id);
+					With(id, ObjCredit, function (id, other){
+						 InstanceDestroy(id);
+					});
+				}
+			}
+			break;
+	}
+}
+
+function EventCollision(id:Object, targetIns:Object) : void
+{
+	switch(id.baseClass)
+	{
+		case ObjCannonShot:
+			switch(targetIns.baseClass)
+			{
+				case ObjTerrain:
+					if(id.currentFrame==1)
+					{
+						DrawCircleBitmap(targetIns, id.x-targetIns.x, id.y-targetIns.y, 50, 0x00FFFFFF);
+						InstanceCreate(ObjFlame, id.x, id.y+10);
+					}
+					else if(id.currentFrame==2)
+					{
+						DrawCircleBitmap(targetIns, id.x-targetIns.x, id.y-targetIns.y, 100, 0x00FFFFFF);
+						InstanceCreate(ObjFlame, id.x, id.y+60).scaleX = 1.3;
+						InstanceCreate(ObjFlame, id.x+10, id.y+60).scaleX = 1.3;
+						InstanceCreate(ObjFlame, id.x-10, id.y+60).scaleX = 1.3;
+					}
+					InstanceDestroy(id);
+					SndBomb.play();
+					break;
+			}
+			break;
+		case ObjFlame:
+			switch(targetIns.baseClass)
+			{
+				case ObjCannon:
+					targetIns.hp = Math.max(targetIns.hp-0.25, 0);
+					With(targetIns, ObjGame, function (id, other){
+						 id.hpBar.x = other.x;
+						 id.hpBar.y = other.y-40;
+						 id.hpBar.SetCurrentValue(other.hp);
+					});
+					break;
+			}
+			break;
+		case ObjCannon:
+			switch(targetIns.baseClass)
+			{
+				case ObjItem:
+					targetIns.x = -1000;
+					targetIns.y = -1000;
+					InstanceDestroy(targetIns);
+					id.shotItem = Math.floor((Math.random()*2)) + 1;
+					SndGetItem.play();
+					break;
+			}
+			break;
+	}
+}
+
+function EventKeyPress(id:Object, keyCode:int): void
+{
+	switch(id.baseClass)
+	{
+		case ObjCannon:
+			var controlTurn;
+			With(id, ObjGame, function (id, other){
+				 controlTurn = id.currentControl;
+			});
+			if(id.control!=controlTurn || InstanceNumber(id, ObjCannonShot)!=0 || InstanceNumber(id, ObjFlame)!=0){
+				break;
+			}
+			switch(keyCode)
+			{
+				case Keyboard.UP:
+					if(id.shotPower==0)
+					{
+						if(!PlaceFree(id, ObjTerrain, id.x, id.y+1)){
+							id.vSpeed = -12;
+						}
+					}
+					break;
+			}
+			break;
+	}
+}
+
+function EventKeyDown(id:Object, keyCode:int): void
+{
+	switch(id.baseClass)
+	{
+		case ObjCannon:
+			var controlTurn;
+			With(id, ObjGame, function (id, other){
+				 controlTurn = id.currentControl;
+			});
+			if(id.control!=controlTurn || InstanceNumber(id, ObjCannonShot)!=0 || InstanceNumber(id, ObjFlame)!=0){
+				break;
+			}
+			switch(keyCode)
+			{
+				case Keyboard.LEFT:
+					if(id.shotPower==0)
+					{
+						id.scaleX = -1;
+						id.hSpeed = Math.max(id.hSpeed - id.hSpeedAccel, -id.hSpeedMax);
+					}
+					break;
+				case Keyboard.RIGHT:
+					if(id.shotPower==0)
+					{
+						id.scaleX = 1;
+						id.hSpeed = Math.min(id.hSpeed + id.hSpeedAccel, id.hSpeedMax);
+					}
+					break;
+				case Keyboard.UP:
+					if(id.shotPower!=0){
+						id.shotAngle = Math.max(id.shotAngle-10, id.shotAngleMin);
+					}
+					break;
+				case Keyboard.DOWN:
+					if(id.shotPower!=0){
+						id.shotAngle = Math.min(id.shotAngle+10, id.shotAngleMax);
+					}
+					break;
+				case Keyboard.SPACE:
+					id.shotPower += 0.01;
+					With(id, ObjAngleArrow, function (id, other){
+						 if(other.scaleX==1)
+						 {
+							 id.x = other.x+60;
+							 id.scaleX = 1;
+							 id.rotation = other.shotAngle;
+						 }
+						 else
+						 {
+							 id.x = other.x-60;
+							 id.scaleX = -1;
+							 id.rotation = -other.shotAngle;
+						 }
+						 id.y = other.y;
+					});
+					With(id, ObjGame, function (id, other){
+						 if(other.shotPower>=id.powerBar.maxValue){
+							 EventKeyRelease(other, Keyboard.SPACE);
+						 }
+						 else
+						 {
+							 id.powerBar.x = other.x;
+							 id.powerBar.y = other.y-40;
+							 id.powerBar.SetCurrentValue(other.shotPower);
+						 }
+					});
+					break;
+			}
+			if((Sign(id.x-id.xPrevious)==-1 && id.hSpeed<0) || (Sign(id.x-id.xPrevious)==1 && id.hSpeed>0))
+			{
+				if(id.moveMax<PointDistance(id.xPrevious, id.yPrevious, id.x+id.hSpeed, id.yPrevious)){
+					id.hSpeed = 0;
+				}
+			}
+			break;
+	}
+}
+
+function EventKeyRelease(id:Object, keyCode:int): void
+{
+	switch(id.baseClass)
+	{
+		case ObjCannon:
+			var controlTurn;
+			With(id, ObjGame, function (id, other){
+				 controlTurn = id.currentControl;
+			});
+			if(id.control!=controlTurn || InstanceNumber(id, ObjCannonShot)!=0 || InstanceNumber(id, ObjFlame)!=0){
+				break;
+			}
+			switch(keyCode)
+			{
+				case Keyboard.SPACE:
+					var targetX:Number, targetY:Number, angle:Number, distance:Number, gravity:Number;
+					var vector1:Number, vector2:Number, vector3:Number, speed:Number, ins:Object, creNumber:int;
+					targetX = id.x+id.shotPower*(id.shotAngle+90)*20*(id.scaleX==1 ? 1 : -1);
+					targetY = id.y-LengthdirY(800, id.shotAngle);
+					angle = PointDirection(id.x, id.y, targetX, targetY);
+					if(angle-Math.floor(angle)==0){
+						angle += 0.000001; //will be fixed.
+					}
+					distance = Math.abs(id.x - targetX);
+					gravity = Math.min(0.3, Math.max(0.1, id.shotPower));
+					vector1 = (distance * gravity);
+					vector2 = LengthdirX(1, angle);
+					vector3 = LengthdirY(1, angle);
+					speed = Math.sqrt(vector1 / (2 * Math.abs(vector2 * vector3)));
+					//Setting
+					if(id.shotItem==2)
+					{
+						creNumber = 3;
+						SndMultiShot.play();
+					}
+					else
+					{
+						creNumber = 1;
+						SndShot.play();
+					}
+					while(creNumber--)
+					{
+						ins = InstanceCreate(ObjCannonShot, id.x, id.y-30-(creNumber*50));
+						ins.gravity = gravity;
+						ins.control = id.control;
+						ins.hSpeed = LengthdirX(speed, angle);
+						ins.hSpeed += Sign(ins.hSpeed) * creNumber * 1.3;
+						ins.vSpeed = LengthdirY(speed, angle);
+						ins.gotoAndStop(1);
+					}
+					if(id.shotItem==1){
+						ins.gotoAndStop(2);
+					}
+					//Create ObjCannonShot
+					if(Math.floor(Math.random()*5)==0){
+						InstanceCreate(ObjItem, Math.random()*(SystemRoomWidth-1800)+500, 100);
+					}
+					//Create Item
+					id.shotItem = 0;
+					id.shotPower = 0;
+					With(id, ObjGame, function (id, other){
+						 id.powerBar.x = -1000;
+						 id.powerBar.y = -1000;
+						 id.currentControl = (id.currentControl+1) % 2;
+					});
+					With(id, ObjAngleArrow, function (id, other){
+						 id.x = -1000;
+						 id.y = -1000;
+					});
+					With(id, ObjItemBox, function (id, other){
+						 id.x = -1000;
+						 id.y = -1000;
+					});
+					With(id, ObjTextBox, function (id, other){
+						 id.x = -1000;
+						 id.y = -1000;
+					});
+					With(id, ObjCannon, function (id, other){
+						 id.xPrevious = id.x;
+						 id.yPrevious = id.y;
+					});
+					id.hSpeed = id.hSpeed - 3*(id.scaleX==1 ? 1 : -1);
+					break;
+			}
+			break;
+	}
+}
+
+function EventMouseDown(e:MouseEvent) : void
+{
+	var id = e.currentTarget;
+}
+
+function EventMouseUp(e:MouseEvent) : void
+{
+	var id = e.currentTarget;
+	switch(id.baseClass)
+	{
+		case ObjGameStart:
+			if(InstanceNumber(id, ObjHowTo)==0 && InstanceNumber(id, ObjCredit)==0){
+				InstanceCreate(ObjGame, 0, 0);
+			}
+			break;
+		case ObjHowToStart:
+			if(InstanceNumber(id, ObjHowTo)==0 && InstanceNumber(id, ObjCredit)==0){
+				InstanceCreate(ObjHowTo, 0, 0);
+			}
+			break;
+		case ObjCreditStart:
+			if(InstanceNumber(id, ObjHowTo)==0 && InstanceNumber(id, ObjCredit)==0){
+				InstanceCreate(ObjCredit, 0, 0);
+			}
+			break;
+		case ObjClearBox:
+			if(id.isOpen)
+			{
+				id.isOpen = false;
+				SndOpenPage.play();
+			}
+			break;
+		case ObjHowToBox:
+			if(id.isOpen)
+			{
+				id.isOpen = false;
+				SndOpenPage.play();
+			}
+			break;
+		case ObjCreditBox:
+			if(id.isOpen)
+			{
+				id.isOpen = false;
+				SndOpenPage.play();
+			}
+			break;
+	}
+}
+
+function EventMouseOver(e:MouseEvent) : void
+{
+	var id = e.currentTarget;
+	switch(id.baseClass)
+	{
+		case ObjGameStart:
+			id.gotoAndStop(2);
+			break;
+		case ObjHowToStart:
+			id.gotoAndStop(2);
+			break;
+		case ObjCreditStart:
+			id.gotoAndStop(2);
+			break;
+	}
+}
+
+function EventMouseOut(e:MouseEvent) : void
+{
+	var id = e.currentTarget;
+	switch(id.baseClass)
+	{
+		case ObjGameStart:
+			id.gotoAndStop(1);
+			break;
+		case ObjHowToStart:
+			id.gotoAndStop(1);
+			break;
+		case ObjCreditStart:
+			id.gotoAndStop(1);
+			break;
+	}
+}
+
+function InstanceCreate(obj:Object, argX:Number, argY:Number): Object
+{
+	var id:MovieClip = new obj;
+	SystemInstanceList.push(id);
+	id.x = argX;
+	id.y = argY;
+	id.realX = null;
+	id.realY = null;
+	id.useBitmap = false;
+	id.baseClass = obj;
+	stage.addChild(id);
+	EventCreate(id);
+	return id;
+	//Call the create event
+}
+
+function InstanceCreateBitmap(obj:Object, argX:Number, argY:Number): Object
+{
+	var id:MovieClip = new obj;
+	SystemInstanceList.push(id);
+	id.x = argX;
+	id.y = argY;
+	id.realX = null;
+	id.realY = null;
+	id.sprite = new BitmapData(id.getBounds(stage).width, id.getBounds(stage).height, true, 0x00FFFFFF);
+	id.sprite.draw(id);
+	id.bitmap = new Bitmap(id.sprite);
+	id.bitmap.x = id.x;
+	id.bitmap.y = id.y;
+	id.useBitmap = true;
+	id.baseClass = obj;
+	stage.addChild(id.bitmap);
+	EventCreate(id);
+	return id;
+	//Call the create event
+}
+
+function InstanceDestroy(id:Object) : void
+{
+	if(SystemInstanceDestroyList.indexOf(id)==-1){
+		SystemInstanceDestroyList.push(id)
+	}
+}
+
+function PlaceFree(id:Object, target:Object, argX:Number, argY:Number): Boolean
+{
+	var tempX:Number=id.x, tempY:Number=id.y, bool:Boolean=true, i:int;
+	id.x = argX;
+	id.y = argY;
+	if(target is String)
+	{
+		switch(target)
+		{
+			case "all":
+				for(i=0; i<SystemInstanceList.length; i++)
+				{
+					if(HitTestBitmap(id, SystemInstanceList[i]))
+					{
+						bool = false;
+						break;
+					}
+				}
+				break;
+			case "self":
+				bool = false;
+				break;
+			case "other":
+				for(i=0; i<SystemInstanceList.length; i++)
+				{
+					if(id!=SystemInstanceList[i])
+					{
+						if(HitTestBitmap(id, SystemInstanceList[i]))
+						{
+							bool = false;
+							break;
+						}
+					}
+				}
+				break;
+		}
+	}
+	else if(target is Class)
+	{
+		for(i=0; i<SystemInstanceList.length; i++)
+		{
+			if(SystemInstanceList[i].baseClass==target)
+			{
+				if(HitTestBitmap(id, SystemInstanceList[i]))
+				{
+					bool = false;
+					break;
+				}
+			}
+		}
+	}
+	else
+	{
+		if(HitTestBitmap(id, target)){
+			bool = false;
+		}
+	}
+	id.x = tempX;
+	id.y = tempY;
+	return bool;
+}
+
+function MoveContact(id:Object, target:Object, dir:Number, maxDist:Number): void
+{
+	var xSpeed:Number=LengthdirX(1, dir), ySpeed:Number=LengthdirY(1, dir), i:int;
+	for(i=0; i<maxDist; i++)
+	{
+		if(PlaceFree(id, target, id.x+xSpeed, id.y+ySpeed))
+		{
+			id.x += xSpeed;
+			id.y += ySpeed;
+		}
+		else{
+			break;
+		}
+	}
+}
+
+function LengthdirX(len:Number, dir:Number) : Number
+{
+	return len * Math.cos(dir * Math.PI / 180);
+}
+
+function LengthdirY(len:Number, dir:Number) : Number
+{
+	return -len * Math.sin(dir * Math.PI / 180);
+}
+
+function DegToRad(degree:Number) : Number
+{
+	return (degree * Math.PI) / 180;
+}
+
+function RadToDeg(radian:Number) : Number
+{
+	return (180 / Math.PI) * radian;
+}
+
+function BoolToInt(bool:Boolean) : int
+{
+	if(bool==true){
+		return 1;
+	}
+	return 0;
+}
+
+function Sign(num:Number) : int
+{
+	if(num>0){
+		return 1;
+	}
+	else if(num==0){
+		return 0;
+	}
+	return -1;
+}
+
+function PointDirection(x1:Number, y1:Number, x2:Number, y2:Number) : Number
+{
+	return (RadToDeg(Math.atan2(x1-x2, y1-y2))+450) % 360;
+}
+
+function PointDistance(x1:Number, y1:Number, x2:Number, y2:Number) : Number
+{
+	return Math.sqrt(Math.pow(x1-x2, 2)+Math.pow(y1-y2, 2));
+}
+
+function HitTestBitmap(id:Object, targetIns:Object) : Boolean
+{
+	var aRect:Rectangle, bRect:Rectangle;
+	var aBmpData:Object, bBmpData:Object;
+	if(id.useBitmap){
+		aBmpData = id.sprite;
+	}
+	else
+	{
+		aRect = id.getBounds(stage);
+		aBmpData = new BitmapData(aRect.width, aRect.height, true, 0x00FFFFFF);
+		aBmpData.draw(id);
+	}
+	if(targetIns.useBitmap){
+		bBmpData = targetIns.sprite;
+	}
+	else
+	{
+		bRect = targetIns.getBounds(stage);
+		bBmpData = new BitmapData(bRect.width, bRect.height, true, 0x00FFFFFF);
+		bBmpData.draw(targetIns);
+	}
+	if(aBmpData.hitTest(new Point(id.x, id.y), 255, bBmpData, new Point(targetIns.x, targetIns.y), 255)){
+		return true;
+	}
+	return false;
+}
+
+function HitTestCollision(id:Object, target:Object, precision:Boolean) : void
+{
+	var i:int;
+	if(target is String)
+	{
+		switch(target)
+		{
+			case "all":
+				for(i=0; i<SystemInstanceList.length; i++)
+				{
+					if(precision)
+					{
+						if(HitTestBitmap(id, SystemInstanceList[i])){
+							EventCollision(id, SystemInstanceList[i]);
+						}
+					}
+					else
+					{
+						if(id.hitTestObject(SystemInstanceList[i])){
+							EventCollision(id, SystemInstanceList[i]);
+						}
+					}
+				}
+				break;
+			case "self":
+				EventCollision(id, id);
+				break;
+			case "other":
+				for(i=0; i<SystemInstanceList.length; i++)
+				{
+					if(id!=SystemInstanceList[i])
+					{
+						if(precision)
+						{
+							if(HitTestBitmap(id, SystemInstanceList[i])){
+								EventCollision(id, SystemInstanceList[i]);
+							}
+						}
+						else
+						{
+							if(id.hitTestObject(SystemInstanceList[i])){
+								EventCollision(id, SystemInstanceList[i]);
+							}
+						}
+					}
+				}
+				break;
+		}
+	}
+	else if(target is Class)
+	{
+		for(i=0; i<SystemInstanceList.length; i++)
+		{
+			if(SystemInstanceList[i].baseClass==target)
+			{
+				if(precision)
+				{
+					if(HitTestBitmap(id, SystemInstanceList[i])){
+						EventCollision(id, SystemInstanceList[i]);
+					}
+				}
+				else
+				{
+					if(id.hitTestObject(SystemInstanceList[i])){
+						EventCollision(id, SystemInstanceList[i]);
+					}
+				}
+			}
+		}
+	}
+	else
+	{
+		if(precision)
+		{
+			if(HitTestBitmap(id, target)){
+				EventCollision(id, target);
+			}
+		}
+		else
+		{
+			if(id.hitTestObject(target)){
+				EventCollision(id, target);
+			}
+		}
+	}
+}
+
+function DrawCircleBitmap(id:Object, argX:Number, argY:Number, radius:Number, color:int) : Boolean
+{
+	if(id.useBitmap)
+	{
+		var circle:ByteArray = new ByteArray();
+		var radiusSqr:Number = radius * radius, i:int, j:int;
+		for(i=-radius; i<=radius; i++)
+		{
+			for(j=-radius; j<=radius; j++)
+			{
+				if((i*i)+(j*j)<=radiusSqr)
+				{
+					circle.writeByte(i);
+					circle.writeByte(j);
+				}
+			}
+		}
+		circle.position = 0;
+		while(circle.bytesAvailable){
+			id.sprite.setPixel32(argX+circle.readByte(), argY+circle.readByte(), color);
+		}
+		return true;
+	}
+	return false;
+}
+
+function SetView(argX:int, argY:int) : void
+{
+	SystemViewX = Math.max(0, Math.min(SystemRoomWidth-stage.stageWidth, argX));
+	SystemViewY = Math.max(0, Math.min(SystemRoomHeight-stage.stageHeight, argY));
+}
+
+function With(id:Object, target:Object, command:Object) : void
+{
+	var i:int;
+	if(target is String)
+	{
+		switch(target)
+		{
+			case "all":
+				for(i=0; i<SystemInstanceList.length; i++){
+					command(SystemInstanceList[i], id);
+				}
+				break;
+			case "self":
+				command(id, id);
+				break;
+			case "other":
+				for(i=0; i<SystemInstanceList.length; i++)
+				{
+					if(id!=SystemInstanceList[i]){
+						command(SystemInstanceList[i], id);
+					}
+				}
+				break;
+		}
+	}
+	else if(target is Class)
+	{
+		for(i=0; i<SystemInstanceList.length; i++)
+		{
+			if(SystemInstanceList[i].baseClass==target){
+				command(SystemInstanceList[i], id);
+			}
+		}
+	}
+	else{
+		command(target, id);
+	}
+	//With(id, target, function (id, other){});
+}
+
+function InstanceNumber(id:Object, target:Object) : int
+{
+	var i:int, count:int=0;
+	if(target is String)
+	{
+		switch(target)
+		{
+			case "all":
+				count = SystemInstanceList.length;
+				break;
+			case "self":
+				if(SystemInstanceList.indexOf(id)!=-1){
+					count++;
+				}
+				break;
+			case "other":
+				count = SystemInstanceList.length;
+				if(SystemInstanceList.indexOf(id)!=-1){
+					count--;
+				}
+				break;
+		}
+	}
+	else if(target is Class)
+	{
+		for(i=0; i<SystemInstanceList.length; i++)
+		{
+			if(SystemInstanceList[i].baseClass==target){
+				count++;
+			}
+		}
+	}
+	else{
+		if(SystemInstanceList.indexOf(id)!=-1){
+			count++;
+		}
+	}
+	return count;
+}
+
+function SystemEventStep(e:Event): void
+{
+	var i:int, j:int;
+	for(i=0; i<SystemInstanceList.length; i++)
+	{
+		if(SystemInstanceList[i].realX!=null && SystemInstanceList[i].realY!=null)
+		{
+			SystemInstanceList[i].x = SystemInstanceList[i].realX;
+			SystemInstanceList[i].y = SystemInstanceList[i].realY;
+			if(SystemInstanceList[i].useBitmap)
+			{
+				SystemInstanceList[i].bitmap.x = SystemInstanceList[i].x;
+				SystemInstanceList[i].bitmap.y = SystemInstanceList[i].y;
+			}
+		}
+	}
+	//Re view
+	for(i=0; i<SystemKeyStateList.length; i+=2)
+	{
+		switch(SystemKeyStateList[i])
+		{
+			case ConstSystemKeyPress:
+				for(j=0; j<EventKeyPressList.length; j++){
+					EventKeyPress(EventKeyPressList[j],	SystemKeyStateList[i+1]);
+				}
+				SystemKeyStateList.splice(i, 1, ConstSystemKeyDown);
+				break;
+			case ConstSystemKeyDown:
+				for(j=0; j<EventKeyDownList.length; j++){
+					EventKeyDown(EventKeyDownList[j], SystemKeyStateList[i+1]);
+				}
+				break;
+			case ConstSystemKeyRelease:
+				for(j=0; j<EventKeyReleaseList.length; j++){
+					EventKeyRelease(EventKeyReleaseList[j],	SystemKeyStateList[i+1]);
+				}
+				SystemKeyStateList.splice(i, 2);
+				i-=2;
+				break;
+		}
+	}
+	//Call the keyboard event
+	for(i=0; i<EventStepList.length; i++){
+		EventStep(EventStepList[i]);
+	}
+	//Call the step event
+	for(i=0; i<SystemInstanceList.length; i++)
+	{
+		if(SystemInstanceList[i].useBitmap)
+		{
+			SystemInstanceList[i].bitmap.x = SystemInstanceList[i].x;
+			SystemInstanceList[i].bitmap.y = SystemInstanceList[i].y;
+		}
+	}
+	//Bitmap moving
+	while(SystemInstanceDestroyList.length!=0){
+		SystemInstanceDestroy(SystemInstanceDestroyList.shift());
+	}
+	//Instance destroy
+	for(i=0; i<SystemInstanceList.length; i++)
+	{
+		SystemInstanceList[i].realX = SystemInstanceList[i].x;
+		SystemInstanceList[i].realY = SystemInstanceList[i].y;
+		SystemInstanceList[i].x -= SystemViewX;
+		SystemInstanceList[i].y -= SystemViewY;
+		if(SystemInstanceList[i].useBitmap)
+		{
+			SystemInstanceList[i].bitmap.x = SystemInstanceList[i].x;
+			SystemInstanceList[i].bitmap.y = SystemInstanceList[i].y;
+		}
+	}
+	//view
+}
+
+function SystemEventKeyDown(e:KeyboardEvent): void
+{
+	if(SystemKeyStateList.indexOf(e.keyCode) == -1){
+		SystemKeyStateList.push(ConstSystemKeyPress, e.keyCode);
+	}
+}
+
+function SystemEventKeyUp(e:KeyboardEvent): void
+{
+	var index = SystemKeyStateList.indexOf(e.keyCode);
+	if(index != -1){
+		SystemKeyStateList.splice(index-1, 1, ConstSystemKeyRelease);
+	}
+}
+
+function SystemInstanceDestroy(id:Object) : void
+{
+	EventDestroy(id);
+	//Call the destroy event
+	SystemInstanceList.splice(SystemInstanceList.indexOf(id), 1);
+	if(id.useBitmap){
+		stage.removeChild(id.bitmap);
+	}
+	else{
+		stage.removeChild(MovieClip(id));
+	}
+}
