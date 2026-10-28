@@ -1,6 +1,8 @@
 # Fortress
 
-A two-player artillery game where two people take turns firing shells from one keyboard. The arrow keys move the cannon, the space bar charges and fires, and the terrain is carved out in a circle where a shell lands. The side whose health runs out, or who falls through a crater off the bottom of the map, loses. A school assignment made with Adobe Flash CS5.5 and ActionScript 3.0.
+[한국어](README.ko.md)
+
+A two-player artillery game where two people take turns firing shells from one keyboard. The arrow keys move the cannon, the space bar charges and fires, and the terrain is carved out in a circle where a shell lands. Whoever runs out of health or falls through a crater off the bottom of the map loses. It is a school assignment made with Adobe Flash CS5.5 and ActionScript 3.0.
 
 <p>
   <img src="docs/screenshots/screenshot-1.jpg" width="480" alt="Gameplay">
@@ -9,7 +11,7 @@ A two-player artillery game where two people take turns firing shells from one k
 
 ## How to play
 
-Download from Releases and open the swf with Flash Player. The background music and sound effects are read from the `Sounds` folder next to the swf. Game Start on the main menu starts a match, and How To and Credit open the instructions and the credits.
+Download it from Releases and open the swf in Flash Player. The game reads the background music and sound effects from the `Sounds` folder next to the swf. Game Start on the main menu starts a match, and How To and Credit open the instructions and the credits.
 
 | Key | Action |
 |---|---|
@@ -21,19 +23,19 @@ Download from Releases and open the swf with Flash Player. The background music 
 
 Only the cannon whose turn it is can move, and the turn passes to the other player after a shot. Neither cannon can be controlled until every shell and flame is gone. Each turn allows 200 pixels of movement, shown by the blue bar above the cannon. Firing pushes the cannon back with recoil.
 
-A shell that hits the ground erases the terrain in a 50 pixel radius and leaves a flame. A cannon touching a flame loses 0.25 of its 100 health every frame. Every shot has a 1 in 5 chance of dropping an item box from the sky, and the cannon that picks it up gets one of two special shots for its next turn. The current shot type is shown in the upper left of the screen.
+A shell that hits the ground erases the terrain in a 50 pixel radius and leaves a flame. A cannon touching a flame loses 0.25 of its 100 health every frame. Every shot has a 1 in 5 chance of dropping an item box from the sky, and the next shot of the cannon that picks it up becomes one of the two below. The upper left of the screen shows which shell will be fired next.
 
 | Item | Effect |
 |---|---|
 | Big Bombing | Erases the terrain in a 100 pixel radius and leaves three large flames |
 | Carpet Bombing | Fires three shells to slightly different distances |
 
-When the match is decided a result box appears, and clicking it returns to the main menu.
+When the match is decided, a result box appears, and clicking it returns to the main menu.
 
 
 ## How it works
 
-**The GameMaker event model is rebuilt on top of ActionScript.** The stage's `ENTER_FRAME` and keyboard events drive KeyPress, KeyDown and KeyRelease events from the key states and a Step event every frame, dispatched to each object, and Create, Collision, Destroy and mouse events are likewise functions that branch on the object type. Each library symbol has a class name such as `ObjCannon`, and GameMaker functions such as `InstanceCreate`, `InstanceDestroy`, `InstanceNumber`, `PlaceFree`, `MoveContact`, `LengthdirX` and `PointDirection` are ported under the same names. GameMaker's `with` statement is imitated by `With`, which takes an anonymous function. The view works by subtracting the view position from every instance's coordinates at the end of each frame and restoring them at the start of the next, so an 800x600 screen follows a 3000 pixel wide map.
+**The GameMaker event model is rebuilt on top of ActionScript.** Every frame, the game takes the stage's `ENTER_FRAME` and keyboard events and hands the objects KeyPress, KeyDown and KeyRelease events based on the key states, plus a Step event. Create, Collision, Destroy and mouse events are also written as functions that branch on the object type. Each library symbol has a class name such as `ObjCannon`, and GameMaker functions such as `InstanceCreate`, `InstanceDestroy`, `InstanceNumber`, `PlaceFree`, `MoveContact`, `LengthdirX` and `PointDirection` are ported under the same names. GameMaker's `with` statement is imitated by `With`, which takes an anonymous function. To make the 800x600 screen follow a 3000 pixel wide map, the view position is subtracted from every instance's coordinates at the end of each frame and added back at the start of the next.
 
 ```actionscript
 var controlTurn;
@@ -42,9 +44,9 @@ With(id, ObjGame, function (id, other){
 });
 ```
 
-**The terrain is tested and erased as a bitmap.** The terrain symbol is drawn once into a `BitmapData`, and collisions use `BitmapData.hitTest` to check whether opaque pixels overlap. When a shell hits, the pixels inside a circle around the impact point are set to transparent with `setPixel32`, leaving a crater.
+**Terrain collision and erasing work on a bitmap.** The terrain symbol is drawn once into a `BitmapData` at the start, and collisions use `BitmapData.hitTest` to check whether opaque pixels overlap. When a shell hits, `setPixel32` turns the pixels in a circle around the impact point transparent to make a crater.
 
-**The shell's initial speed comes from solving the range formula backwards.** The charged power and the firing angle set a target point, and the horizontal distance and gravity go into the range formula R = v² sin2θ / g to solve for v. Gravity is set between 0.1 and 0.3 by the charged power, and adding it to the velocity every frame in flight makes the parabola.
+**The shell's initial speed comes from working the range formula backwards.** The charged power and the firing angle set a target point, and the horizontal distance and gravity go into the range formula R = v² sin2θ / g to solve for v. Gravity ranges from 0.1 to 0.3 depending on the charged power, and adding it to the velocity every frame in flight traces the parabola.
 
 ```actionscript
 vector1 = (distance * gravity);
@@ -53,7 +55,7 @@ vector3 = LengthdirY(1, angle);
 speed = Math.sqrt(vector1 / (2 * Math.abs(vector2 * vector3)));
 ```
 
-**Slopes are climbed up to a grade limit.** A cannon can step up by the tangent of its `gradeAbility` of 60 degrees times its horizontal speed (at least 1). When something blocks the way, it checks whether the spot raised by that height is free, steps up and snaps back to the ground with `MoveContact`. Going downhill, it snaps down within the same height so it follows the slope.
+**Slopes are climbed and descended within a grade limit.** A cannon can step up a height equal to the tangent of its `gradeAbility` of 60 degrees times its horizontal speed (at least 1). When something blocks the way, it checks whether the spot that much higher is free, steps up onto it and snaps back to the ground with `MoveContact`. Going downhill, it snaps down within the same height so it follows the slope.
 
 
 ## Files
@@ -78,4 +80,4 @@ The slope movement, parabolic motion and terrain destruction code was based on t
 
 ## License
 
-CC BY-NC-ND 4.0. Unmodified copies may be shared for noncommercial purposes with attribution. Modified versions and commercial use are not allowed. Bundled libraries, graphics, sounds, and maps made by other people keep their own rights. See [LICENSE](LICENSE).
+CC BY-NC-ND 4.0. Unmodified copies may be shared for noncommercial purposes with attribution. Distributing modified versions and commercial use are not allowed. Bundled libraries, graphics, sounds, and maps made by other people keep their own rights. See [LICENSE](LICENSE).
